@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { WifiOff, Link2, Copy, LogIn, Plus, Loader2, CheckCircle2, AlertCircle, MessageCircle } from 'lucide-react';
+import { WifiOff, Link2, LogIn, Plus, Loader2, CheckCircle2, AlertCircle, MessageCircle } from 'lucide-react';
 import { useNetworkStore } from '../store/networkStore';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { createRoom, checkRoom } from '../services/roomService';
@@ -9,7 +9,7 @@ import { GameBoard } from './game/GameBoard';
 type LobbyView = 'idle' | 'creating' | 'waiting' | 'joining';
 
 export function Lobby() {
-  const { status, isHost, roomId, playerId } = useNetworkStore();
+  const { status, roomId, playerId } = useNetworkStore();
   const playerName = useNetworkStore((s) => s.playerName);
   const setPlayerName = useNetworkStore((s) => s.setPlayerName);
   const { initializeConnection } = useWebRTC();
