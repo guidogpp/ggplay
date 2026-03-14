@@ -1,20 +1,35 @@
-import { useState } from 'react';
-import { WifiOff, Copy, LogIn, Plus, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { WifiOff, Link2, Copy, LogIn, Plus, Loader2, CheckCircle2, AlertCircle, MessageCircle } from 'lucide-react';
 import { useNetworkStore } from '../store/networkStore';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { createRoom, checkRoom } from '../services/roomService';
 import { Chat } from './Chat';
+import { GameBoard } from './game/GameBoard';
 
 type LobbyView = 'idle' | 'creating' | 'waiting' | 'joining';
 
 export function Lobby() {
   const { status, isHost, roomId, playerId } = useNetworkStore();
+  const playerName = useNetworkStore((s) => s.playerName);
+  const setPlayerName = useNetworkStore((s) => s.setPlayerName);
   const { initializeConnection } = useWebRTC();
 
   const [view, setView] = useState<LobbyView>('idle');
   const [joinId, setJoinId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Lee ?room= de la URL al montar
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roomParam = params.get('room');
+    if (roomParam) {
+      setJoinId(roomParam);
+      setView('joining');
+    }
+  }, []);
+
+  const nameEmpty = playerName.trim().length === 0;
 
   // —————————————————————————————
   //  Crear sala (Host)
@@ -24,7 +39,7 @@ export function Lobby() {
     setView('creating');
 
     try {
-      const newRoomId = await createRoom(playerId, 'truco');
+      const newRoomId = await createRoom(playerId, 'generala');
       useNetworkStore.getState().setRoom(newRoomId);
       useNetworkStore.getState().setIsHost(true);
       await initializeConnection(newRoomId, true);
@@ -65,14 +80,20 @@ export function Lobby() {
   };
 
   // —————————————————————————————
-  //  Copiar Room ID al portapapeles
+  //  Copiar enlace de invitación
   // —————————————————————————————
-  const handleCopy = async () => {
-    if (!roomId) return;
-    await navigator.clipboard.writeText(roomId);
+  const inviteUrl = roomId ? `${window.location.origin}?room=${roomId}` : '';
+
+  const handleCopyLink = async () => {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const whatsappUrl = roomId
+    ? `https://wa.me/?text=${encodeURIComponent(`¡Únete a mi partida de Generala en GGPlay! ${inviteUrl}`)}`
+    : '';
 
   // —————————————————————————————
   //  Badge de estado de red
@@ -88,20 +109,12 @@ export function Lobby() {
   const { label: statusLabel, color: statusColor } = statusConfig[status];
 
   // ═════════════════════════════════════════
-  //  Render — Connected
+  //  Render — Connected (sin banner de debug)
   // ═════════════════════════════════════════
   if (status === 'connected') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-6 px-4 py-8">
-        <CheckCircle2 className="w-16 h-16 text-emerald-400" />
-        <h1 className="text-3xl font-bold text-emerald-400 text-center">
-          ¡Conexión P2P Establecida con Éxito!
-        </h1>
-        <p className="text-gray-400 text-sm">
-          Sala: <span className="font-mono text-gray-300">{roomId}</span>
-          {' · '}
-          Rol: <span className="font-semibold">{isHost ? 'Host' : 'Cliente'}</span>
-        </p>
+      <div className="flex flex-col items-center min-h-screen gap-6 px-4 py-6">
+        <GameBoard />
         <Chat />
       </div>
     );
@@ -115,13 +128,11 @@ export function Lobby() {
       {/* Header */}
       <header className="text-center space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">GGPlay</h1>
+        <p className="text-sm text-gray-500">La Generala — P2P</p>
         <div className="flex items-center justify-center gap-2 text-sm">
           <WifiOff className={`w-4 h-4 ${statusColor}`} />
           <span className={statusColor}>{statusLabel}</span>
         </div>
-        <p className="text-xs text-gray-500 font-mono truncate max-w-xs">
-          ID: {playerId}
-        </p>
       </header>
 
       {/* Error */}
@@ -132,12 +143,28 @@ export function Lobby() {
         </div>
       )}
 
+      {/* — Input de nombre (siempre visible pre-conexión) — */}
+      {view !== 'waiting' && (
+        <div className="w-full max-w-xs">
+          <label className="block text-sm text-gray-400 mb-1.5">Tu nombre</label>
+          <input
+            type="text"
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            placeholder="Ej: Lionel"
+            maxLength={20}
+            className="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-sm
+                       placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+      )}
+
       {/* — Modo Idle — */}
       {(view === 'idle' || view === 'creating') && (
         <div className="flex flex-col gap-4 w-full max-w-xs">
           <button
             onClick={() => void handleCreateRoom()}
-            disabled={view === 'creating'}
+            disabled={view === 'creating' || nameEmpty}
             className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
           >
             {view === 'creating' ? (
@@ -145,12 +172,12 @@ export function Lobby() {
             ) : (
               <Plus className="w-5 h-5" />
             )}
-            Crear Sala de Truco
+            Crear Sala
           </button>
 
           <button
             onClick={() => { setView('joining'); setError(null); }}
-            disabled={view === 'creating'}
+            disabled={view === 'creating' || nameEmpty}
             className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-colors"
           >
             <LogIn className="w-5 h-5" />
@@ -164,22 +191,37 @@ export function Lobby() {
         <div className="flex flex-col items-center gap-4 w-full max-w-sm text-center">
           <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
           <p className="text-gray-300">Esperando oponente…</p>
-          <p className="text-sm text-gray-400">Comparte este ID:</p>
-          <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-4 py-2">
-            <span className="font-mono text-sm text-indigo-300 break-all select-all">
-              {roomId}
-            </span>
+          <p className="text-sm text-gray-400">Comparte el enlace de la sala:</p>
+
+          {/* Botones de invitación */}
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
             <button
-              onClick={() => void handleCopy()}
-              className="shrink-0 p-1 rounded hover:bg-gray-700 transition-colors"
-              title="Copiar"
+              onClick={() => void handleCopyLink()}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+                         bg-gray-800 hover:bg-gray-700 text-sm font-medium transition-colors"
             >
               {copied ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span className="text-emerald-400">¡Copiado!</span>
+                </>
               ) : (
-                <Copy className="w-4 h-4 text-gray-400" />
+                <>
+                  <Link2 className="w-4 h-4 text-gray-400" />
+                  Copiar enlace
+                </>
               )}
             </button>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+                         bg-emerald-700 hover:bg-emerald-600 text-sm font-medium transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" />
+              WhatsApp
+            </a>
           </div>
         </div>
       )}
@@ -204,7 +246,7 @@ export function Lobby() {
             </button>
             <button
               onClick={() => void handleJoinRoom()}
-              disabled={status === 'signaling'}
+              disabled={status === 'signaling' || nameEmpty}
               className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 font-semibold transition-colors text-sm"
             >
               {status === 'signaling' ? (

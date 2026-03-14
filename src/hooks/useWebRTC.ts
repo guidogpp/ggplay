@@ -81,6 +81,12 @@ export function useWebRTC() {
         useNetworkStore.getState().setDataChannel(dc);
         // CRÍTICO: cortamos la señalización de Supabase para no consumir cuota.
         cleanupSupabaseChannel();
+
+        // Cliente anuncia su nombre al Host vía GameIntent.
+        const { isHost: currentIsHost, playerName: pName, playerId: pid } = useNetworkStore.getState();
+        if (!currentIsHost) {
+          useGameStore.getState().sendIntent({ type: 'ANNOUNCE_PLAYER', name: pName || pid.slice(0, 8) });
+        }
       };
 
       dc.onclose = () => {
@@ -91,6 +97,7 @@ export function useWebRTC() {
 
       dc.onmessage = (event: MessageEvent<string>) => {
         const action: GameAction = JSON.parse(event.data) as GameAction;
+        useNetworkStore.getState().addPeer(action.senderId);
         useGameStore.getState().dispatchAction(action);
       };
     },

@@ -12,10 +12,11 @@ export function Chat() {
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-scroll al último mensaje.
+  // Auto-scroll solo cuando cambia la cantidad de mensajes.
+  const msgCount = messages.length;
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [msgCount]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
