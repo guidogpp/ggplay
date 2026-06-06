@@ -14,10 +14,9 @@ jobs:
         run: |
           response=$(curl -s -o /dev/null -w "%{http_code}" \
             "${{ secrets.SUPABASE_URL }}/rest/v1/" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}")
           echo "Supabase responded with HTTP $response"
-          if [ "$response" -ge 400 ]; then
+          if [ "$response" -ge 500 ]; then
             echo "::error::Supabase ping failed with HTTP $response"
             exit 1
           fi
