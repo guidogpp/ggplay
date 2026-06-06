@@ -17,6 +17,23 @@ const CATEGORY_LABELS: Record<ScoreCategory, string> = {
   generala_doble: 'Generala Doble',
 };
 
+/** Valores posibles para cada categoría */
+function getPossibleValues(cat: ScoreCategory): number[] {
+  switch (cat) {
+    case 'ones':   return [1, 2, 3, 4, 5];
+    case 'twos':   return [2, 4, 6, 8, 10];
+    case 'threes': return [3, 6, 9, 12, 15];
+    case 'fours':  return [4, 8, 12, 16, 20];
+    case 'fives':  return [5, 10, 15, 20, 25];
+    case 'sixes':  return [6, 12, 18, 24, 30];
+    case 'escalera':      return [20];
+    case 'full':          return [30];
+    case 'poker':         return [40];
+    case 'generala':      return [50];
+    case 'generala_doble': return [100];
+  }
+}
+
 const ALL_CATEGORIES: ScoreCategory[] = Object.keys(CATEGORY_LABELS) as ScoreCategory[];
 
 export function LocalGameBoard() {
@@ -25,7 +42,6 @@ export function LocalGameBoard() {
   const resetLocal = useLocalGameStore((s) => s.resetLocal);
 
   const [editing, setEditing] = useState<ScoreCategory | null>(null);
-  const [inputValue, setInputValue] = useState('');
 
   if (!generala) return null;
 
@@ -36,27 +52,22 @@ export function LocalGameBoard() {
   const handleCellTap = (cat: ScoreCategory) => {
     if (phase === 'FINISHED') return;
     setEditing(cat);
-    setInputValue('');
   };
 
-  const handleConfirm = () => {
+  const handleSelectValue = (value: number) => {
     if (editing === null) return;
-    const val = parseInt(inputValue, 10);
-    scoreCategoryManual(editing, isNaN(val) || val < 0 ? 0 : val);
+    scoreCategoryManual(editing, value);
     setEditing(null);
-    setInputValue('');
   };
 
   const handleCrossOut = () => {
     if (editing === null) return;
     scoreCategoryManual(editing, 0);
     setEditing(null);
-    setInputValue('');
   };
 
   const handleCancel = () => {
     setEditing(null);
-    setInputValue('');
   };
 
   // —— FINISHED ——
@@ -123,7 +134,7 @@ export function LocalGameBoard() {
         Turno de {currentName}
       </div>
 
-      {/* Input inline cuando se está editando */}
+      {/* Panel de opciones */}
       {editing !== null && (
         <div className="w-full bg-gray-800 border border-gray-600 rounded-xl p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
@@ -134,30 +145,23 @@ export function LocalGameBoard() {
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              min="0"
-              autoFocus
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleConfirm(); }}
-              placeholder="Puntaje"
-              className="flex-1 rounded-lg bg-gray-900 border border-gray-700 px-3 py-2 text-sm
-                         placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500
-                         [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
-            <button
-              onClick={handleConfirm}
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold transition-colors"
-            >
-              Anotar
-            </button>
+          <div className="flex gap-2 flex-wrap">
+            {getPossibleValues(editing).map((val) => (
+              <button
+                key={val}
+                onClick={() => handleSelectValue(val)}
+                className="px-4 py-2 rounded-lg bg-indigo-600/20 text-indigo-300 border border-indigo-600/40
+                           hover:bg-indigo-600/50 hover:text-indigo-200 font-semibold text-sm transition-colors"
+              >
+                +{val}
+              </button>
+            ))}
             <button
               onClick={handleCrossOut}
-              className="px-4 py-2 rounded-lg bg-red-900/40 border border-red-700 hover:bg-red-900/60 text-red-400 text-sm font-semibold transition-colors"
+              className="px-4 py-2 rounded-lg bg-red-900/30 text-red-400 border border-red-700/50
+                         hover:bg-red-900/50 hover:text-red-300 font-semibold text-sm transition-colors"
             >
-              Tachar
+              ✕ Tachar
             </button>
           </div>
         </div>
