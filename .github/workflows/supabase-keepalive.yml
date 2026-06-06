@@ -1,0 +1,23 @@
+name: Supabase Keepalive
+
+on:
+  schedule:
+    # Cada 4 días a las 08:00 UTC
+    - cron: '0 8 */4 * *'
+  workflow_dispatch: # Permite ejecutarlo manualmente
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "Supabase responded with HTTP $response"
+          if [ "$response" -ge 400 ]; then
+            echo "::error::Supabase ping failed with HTTP $response"
+            exit 1
+          fi
